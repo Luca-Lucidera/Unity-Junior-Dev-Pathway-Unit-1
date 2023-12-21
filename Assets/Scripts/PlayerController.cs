@@ -1,33 +1,70 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using TMPro;
+using System;
 public class PlayerController : MonoBehaviour
 {
-    //farà 5 metri al secondo
-    private float speed = 20;
-    private float turnSpeed = 45;
+
+    [SerializeField] private GameObject centerOfMass;
+    [SerializeField] private TextMeshProUGUI speedometerText;
+    [SerializeField] private TextMeshProUGUI rpmText;
+    [SerializeField] private List<WheelCollider> wheels;
+    [SerializeField] private float horsePower = 0;
+    [SerializeField] private float turnSpeed = 30f;
+
+
+    private Rigidbody playerRb;
     private float horizontalInput;
-    private float forwardSpeed;
+    private float verticalInput;
+    private float speed;
+    private float rpm;
+    private int wheelsOnGround;
 
     void Start()
     {
+        playerRb = GetComponent<Rigidbody>();
+        playerRb.centerOfMass = centerOfMass.transform.localPosition;
     }
 
-    //Questa funzione viene chiamata ad ogni frame (60 volte al secondo)
-    void Update()
+    void FixedUpdate()
     {
         //Il nome lo trovi in Edit -> Project Settings -> Input Manager
         horizontalInput = Input.GetAxis("Horizontal");
-        forwardSpeed = Input.GetAxis("Vertical");
+        verticalInput = Input.GetAxis("Vertical");
 
-        //Muoviamo il veicolo in avanti o indietro per 5 metri al secondo
-        transform.Translate(Vector3.forward * Time.deltaTime * speed * forwardSpeed);
-      
-        //Prendiamo l'angolo di rotazione
-        var angolo = Time.deltaTime * turnSpeed * horizontalInput;
+        if (IsOnGround())
+        {
+            //Il pezzo sotto commentato non va bene perchÃ© applica la forza a livello globale e non a livello locale
+            //playerRb.AddForce(Vector3.forward * horsePower * verticalInput);
+            playerRb.AddRelativeForce(Vector3.forward * horsePower * verticalInput);
 
-        //Utilizziamo UP perchè abbiamo bisogno di ruotare il veicolo sull'asse delle Y (pensala come girare una penna in verticale)
-        transform.Rotate(Vector3.up * angolo);
+            //Prendiamo l'angolo di rotazione
+            var angolo = Time.deltaTime * turnSpeed * horizontalInput;
+
+            //Utilizziamo UP perchï¿½ abbiamo bisogno di ruotare il veicolo sull'asse delle Y (pensala come girare una penna in verticale)
+            transform.Rotate(Vector3.up * angolo);
+
+            //rigidBody.velocity.magnitude ritorna la velocitÃ  dell'rigid body in metri al secondo, quindi noi dobbiamo trasformarlo in chilometri al secondo
+            speed = playerRb.velocity.magnitude * 3.6f;
+            speedometerText.text = $"Speed: {Mathf.RoundToInt(speed)} km/h";
+
+            rpm = (speed % 30) * 40;
+            rpmText.SetText($"RPM: {Mathf.RoundToInt(rpm)}");
+        }
+    }
+
+    private bool IsOnGround()
+    {
+        wheelsOnGround = 0;
+        foreach (var wheel in wheels)
+        {
+            if (wheel.isGrounded)
+            {
+                wheelsOnGround++;
+            }
+        }
+
+        return wheelsOnGround == 4;
     }
 }
